@@ -1,0 +1,70 @@
+Model the following online movie information as a document database. Consider online movie information where each actor has acted in one or more movies. Each producer has produced many movies but each movie can be produced by more than one producer. Each movie has one or more actors acting in it, in different roles.
+Assume appropriate attributes and collections as per the query requirements.
+Insert at least 5 documents in each collection.
+Answer the following Queries:
+a. List the names of movies with the highest budget.
+b. Display the details of producers who have produced more than one movie in a year.
+c. List the names of actors who have acted in at least one movie, in which ‘Akshay’ has acted.
+d. List the names of movies produced by more than one producer.
+Program:
+
+  
+ 
+# Start MongoDB   
+mongosh
+
+# Create and select the database
+use MovieDatabase
+
+# Create and insert documents into 'movies' collection (5 records)
+db.movies.insertMany([
+  { _id: 1, title: "Blockbuster Movie 1", budget: 15000000, release_date: "2024-01-15" },
+  { _id: 2, title: "Super Hit Movie 2", budget: 20000000, release_date: "2023-07-25" },
+  { _id: 3, title: "Average Movie 3", budget: 8000000, release_date: "2023-09-10" },
+  { _id: 4, title: "Flop Movie 4", budget: 5000000, release_date: "2024-02-20" },
+  { _id: 5, title: "Blockbuster Movie 5", budget: 30000000, release_date: "2024-03-10" }
+])
+
+# Create and insert documents into 'actors' collection (5 records)
+db.actors.insertMany([
+  { _id: 1, name: "Akshay Kumar", age: 54, movies: [1, 2, 3] },
+  { _id: 2, name: "Rajinikanth", age: 73, movies: [2, 5] },
+  { _id: 3, name: "Deepika Padukone", age: 37, movies: [1, 3, 4] },
+  { _id: 4, name: "Ranveer Singh", age: 38, movies: [1, 4, 5] },
+  { _id: 5, name: "Katrina Kaif", age: 39, movies: [2, 3] }
+])
+
+# Create and insert documents into 'producers' collection (5 records)
+db.producers.insertMany([
+  { _id: 1, name: "Producer A", movies: [1, 3] },
+  { _id: 2, name: "Producer B", movies: [2, 4] },
+  { _id: 3, name: "Producer C", movies: [5] },
+  { _id: 4, name: "Producer D", movies: [1, 2, 4] },
+  { _id: 5, name: "Producer E", movies: [3, 5] }
+])
+
+# a. List the names of movies with the highest budget
+db.movies.find({}, { title: 1, budget: 1, _id: 0 }).sort({ budget: -1 }).limit(1)
+
+# b. Display the details of producers who have produced more than one movie in a year
+db.producers.aggregate([
+  { $unwind: "$movies" },
+  { $group: { _id: "$_id", name: { $first: "$name" }, moviesCount: { $sum: 1 } } },
+  { $match: { moviesCount: { $gt: 1 } } }
+])
+
+# c. List the names of actors who have acted in at least one movie in which 'Akshay' has acted
+db.actors.find({ movies: { $in: [1, 2, 3] } }, { name: 1, _id: 0 })
+
+# d. List the names of movies produced by more than one producer
+db.movies.aggregate([
+  { $lookup: {
+      from: "producers",
+      localField: "_id",
+      foreignField: "movies",
+      as: "producer_details"
+    }
+  },
+  { $match: { "producer_details.1": { $exists: true } } },
+  { $project: { title: 1, "producer_details.name": 1, _id: 0 } }
+])
